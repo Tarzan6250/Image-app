@@ -1066,17 +1066,32 @@ def generate_report(entry_id):
     if history_collection is None:
         return jsonify({'error': 'Database connection error'}), 500
     
-    # Find the history entry
+    # Find the specific history entry by entry_id
     try:
-        # Get all entries for this user
-        user_entries = list(history_collection.find({'user_id': user_id}))
+        # First try to find the entry with the exact ID and user_id
+        entry = None
+        try:
+            entry = history_collection.find_one({'_id': entry_id, 'user_id': user_id})
+            
+            # If not found, try with ObjectId conversion
+            if not entry:
+                try:
+                    from bson.objectid import ObjectId
+                    obj_id = ObjectId(entry_id)
+                    entry = history_collection.find_one({'_id': obj_id, 'user_id': user_id})
+                    if entry:
+                        print(f"Found entry with ObjectId conversion: {entry.get('_id')}")
+                except Exception as e:
+                    print(f"Error converting to ObjectId: {e}")
+        except Exception as e:
+            print(f"Error with exact ID match: {e}")
         
-        if len(user_entries) > 0:
-            # Use the first entry for this user as a fallback
-            entry = user_entries[0]
-            print(f"Using entry with ID: {entry.get('_id')}")
-        else:
-            return jsonify({'error': 'No entries found'}), 404
+        # If still not found, return an error
+        if not entry:
+            return jsonify({'error': 'Entry not found'}), 404
+            
+        print(f"Using entry with ID: {entry.get('_id')}")
+
     except Exception as e:
         print(f"Error finding entry: {e}")
         return jsonify({'error': f'Database error: {str(e)}'}), 500
@@ -1145,40 +1160,122 @@ def generate_report(entry_id):
         elements.append(Spacer(1, 0.1*inch))
         
         # Generate paths for the images
-        original_path = os.path.join(app.config['RESULTS_FOLDER'], entry.get('original_filename', ''))
-        mask_path = os.path.join(app.config['RESULTS_FOLDER'], entry.get('mask_filename', ''))
-        overlay_path = os.path.join(app.config['RESULTS_FOLDER'], entry.get('overlay_filename', ''))
+        # Try to get the actual filenames from the entry
+        original_filename = entry.get('original_filename', '')
+        mask_filename = entry.get('mask_filename', '')
+        overlay_filename = entry.get('overlay_filename', '')
         
-        # Create a demonstration image if the original doesn't exist
+        # If no filenames are found, use the result_filename to generate them
+        if not original_filename or not mask_filename or not overlay_filename:
+            result_filename = entry.get('result_filename', '')
+            if result_filename:
+                base_filename = os.path.splitext(result_filename)[0]
+                original_filename = f"{base_filename}_original.png"
+                mask_filename = f"{base_filename}_mask.png"
+                overlay_filename = f"{base_filename}_overlay.png"
+        
+        # Generate the full paths
+        original_path = os.path.join(app.config['RESULTS_FOLDER'], original_filename)
+        mask_path = os.path.join(app.config['RESULTS_FOLDER'], mask_filename)
+        overlay_path = os.path.join(app.config['RESULTS_FOLDER'], overlay_filename)
+        
+        # Create images from base64 data if available, or create demonstration images if needed
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        report_id = f"report_{entry_id}_{timestamp}"
+        
+        # If original path doesn't exist, try to create it from base64 data
         if not os.path.exists(original_path):
-            # Create a demo image
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            filename_base = f"demo_{timestamp}"
-            
-            # Create filenames
-            original_filename = f"{filename_base}_original.png"
-            mask_filename = f"{filename_base}_mask.png"
-            overlay_filename = f"{filename_base}_overlay.png"
-            
-            original_path = os.path.join(app.config['RESULTS_FOLDER'], original_filename)
-            mask_path = os.path.join(app.config['RESULTS_FOLDER'], mask_filename)
-            overlay_path = os.path.join(app.config['RESULTS_FOLDER'], overlay_filename)
-            
-            # Create demo images
-            img = np.zeros((300, 300, 3), dtype=np.uint8)
-            img[:, :, 1] = 100  # Add some green for visibility
-            cv2.putText(img, "Original Image", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            cv2.imwrite(original_path, img)
-            
-            mask = np.zeros((300, 300), dtype=np.uint8)
-            mask[100:200, 100:200] = 255  # Add a white square in the middle
-            cv2.imwrite(mask_path, mask)
-            
-            overlay = np.zeros((300, 300, 3), dtype=np.uint8)
-            overlay[:, :, 1] = 100  # Add some green background
-            overlay[100:200, 100:200, 2] = 255  # Add a red square for tampered area
-            cv2.putText(overlay, "Tampered Area", (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            cv2.imwrite(overlay_path, overlay)
+            # Try to get base64 image data from the entry
+            if 'original_image' in entry and entry['original_image']:
+                try:
+                    # Create a unique filename for this report
+                    original_filename = f"{report_id}_original.png"
+                    original_path = os.path.join(app.config['RESULTS_FOLDER'], original_filename)
+                    
+                    # Convert base64 to image and save
+                    img_data = base64.b64decode(entry['original_image'])
+                    with open(original_path, 'wb') as f:
+                        f.write(img_data)
+                    print(f"Created original image from base64 data for report")
+                except Exception as e:
+                    print(f"Error creating original image from base64: {e}")
+                    # Create a placeholder image
+                    img = np.zeros((300, 300, 3), dtype=np.uint8)
+                    img[:, :, 1] = 100  # Add some green for visibility
+                    cv2.putText(img, "Original Image", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                    cv2.imwrite(original_path, img)
+            else:
+                # Create a placeholder image
+                original_filename = f"{report_id}_original.png"
+                original_path = os.path.join(app.config['RESULTS_FOLDER'], original_filename)
+                img = np.zeros((300, 300, 3), dtype=np.uint8)
+                img[:, :, 1] = 100  # Add some green for visibility
+                cv2.putText(img, "Original Image", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                cv2.imwrite(original_path, img)
+        
+        # If mask path doesn't exist, try to create it from base64 data
+        if not os.path.exists(mask_path):
+            # Try to get base64 image data from the entry
+            if 'segmentation_mask' in entry and entry['segmentation_mask']:
+                try:
+                    # Create a unique filename for this report
+                    mask_filename = f"{report_id}_mask.png"
+                    mask_path = os.path.join(app.config['RESULTS_FOLDER'], mask_filename)
+                    
+                    # Convert base64 to image and save
+                    img_data = base64.b64decode(entry['segmentation_mask'])
+                    with open(mask_path, 'wb') as f:
+                        f.write(img_data)
+                    print(f"Created mask image from base64 data for report")
+                except Exception as e:
+                    print(f"Error creating mask image from base64: {e}")
+                    # Create a placeholder image
+                    mask_filename = f"{report_id}_mask.png"
+                    mask_path = os.path.join(app.config['RESULTS_FOLDER'], mask_filename)
+                    mask = np.zeros((300, 300), dtype=np.uint8)
+                    mask[100:200, 100:200] = 255  # Add a white square in the middle
+                    cv2.imwrite(mask_path, mask)
+            else:
+                # Create a placeholder image
+                mask_filename = f"{report_id}_mask.png"
+                mask_path = os.path.join(app.config['RESULTS_FOLDER'], mask_filename)
+                mask = np.zeros((300, 300), dtype=np.uint8)
+                mask[100:200, 100:200] = 255  # Add a white square in the middle
+                cv2.imwrite(mask_path, mask)
+        
+        # If overlay path doesn't exist, try to create it from base64 data
+        if not os.path.exists(overlay_path):
+            # Try to get base64 image data from the entry
+            if 'manipulation_overlay' in entry and entry['manipulation_overlay']:
+                try:
+                    # Create a unique filename for this report
+                    overlay_filename = f"{report_id}_overlay.png"
+                    overlay_path = os.path.join(app.config['RESULTS_FOLDER'], overlay_filename)
+                    
+                    # Convert base64 to image and save
+                    img_data = base64.b64decode(entry['manipulation_overlay'])
+                    with open(overlay_path, 'wb') as f:
+                        f.write(img_data)
+                    print(f"Created overlay image from base64 data for report")
+                except Exception as e:
+                    print(f"Error creating overlay image from base64: {e}")
+                    # Create a placeholder image
+                    overlay_filename = f"{report_id}_overlay.png"
+                    overlay_path = os.path.join(app.config['RESULTS_FOLDER'], overlay_filename)
+                    overlay = np.zeros((300, 300, 3), dtype=np.uint8)
+                    overlay[:, :, 1] = 100  # Add some green background
+                    overlay[100:200, 100:200, 2] = 255  # Add a red square for tampered area
+                    cv2.putText(overlay, "Tampered Area", (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                    cv2.imwrite(overlay_path, overlay)
+            else:
+                # Create a placeholder image
+                overlay_filename = f"{report_id}_overlay.png"
+                overlay_path = os.path.join(app.config['RESULTS_FOLDER'], overlay_filename)
+                overlay = np.zeros((300, 300, 3), dtype=np.uint8)
+                overlay[:, :, 1] = 100  # Add some green background
+                overlay[100:200, 100:200, 2] = 255  # Add a red square for tampered area
+                cv2.putText(overlay, "Tampered Area", (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                cv2.imwrite(overlay_path, overlay)
         
         # Add images to the PDF
         if os.path.exists(original_path):
