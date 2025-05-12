@@ -1,0 +1,665 @@
+{% extends 'base.html' %}
+
+{% block title %}Image Forgery Detection{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<style>
+    /* Main Container Styles */
+    .container {
+        max-width: 1200px;
+    }
+    
+    /* Upload Area Styles */
+    .upload-section {
+        margin-bottom: 2rem;
+    }
+    
+    .upload-area {
+        border: 3px dashed #ccc;
+        border-radius: 12px;
+        padding: 3rem 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
+    }
+    
+    .upload-area:hover {
+        border-color: #007bff;
+        background-color: #e9f5ff;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .upload-icon {
+        color: #007bff;
+        margin-bottom: 1rem;
+        transition: transform 0.3s ease;
+    }
+    
+    .upload-area:hover .upload-icon {
+        transform: scale(1.2);
+    }
+    
+    /* Preview Styles */
+    .preview-container {
+        text-align: center;
+        margin: 2rem 0;
+    }
+    
+    .preview-image {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 10px;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        transition: transform 0.3s ease;
+    }
+    
+    .preview-image:hover {
+        transform: scale(1.02);
+    }
+    
+    /* Button Styles */
+    .btn-analyze {
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-analyze:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    }
+    
+    /* Loader Styles */
+    .loader {
+        display: none;
+        margin: 2rem auto;
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid #007bff;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1.2s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Results Styles */
+    .results-section {
+        display: none;
+        margin-top: 2rem;
+        animation: fadeIn 0.5s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .result-header {
+        padding: 1.5rem;
+        border-radius: 10px 10px 0 0;
+        margin-bottom: 0;
+    }
+    
+    .result-authentic {
+        background-color: #d4edda;
+        color: #155724;
+        border-bottom: 4px solid #28a745;
+    }
+    
+    .result-tampered {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-bottom: 4px solid #dc3545;
+    }
+    
+    .result-confidence {
+        height: 25px;
+        border-radius: 12px;
+        transition: width 1s ease-in-out;
+    }
+    
+    .result-images {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    .image-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .image-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 20px rgba(0,0,0,0.15);
+    }
+    
+    .image-card-header {
+        font-weight: 600;
+        padding: 1rem;
+    }
+    
+    .image-card img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* Error Message Styles */
+    .error-message {
+        display: none;
+        background-color: #f8d7da;
+        color: #721c24;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        animation: shakeError 0.5s ease;
+    }
+    
+    @keyframes shakeError {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    
+    /* Help tooltip */
+    .tooltip-icon {
+        color: #6c757d;
+        cursor: pointer;
+        margin-left: 0.5rem;
+    }
+    
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+        .upload-area {
+            padding: 2rem 1rem;
+        }
+        
+        .result-images {
+            grid-template-columns: 1fr;
+        }
+        
+        .btn-analyze {
+            width: 100%;
+            margin-top: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 3D Spline Background -->
+<div class="spline-background">
+    <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.92/build/spline-viewer.js"></script>
+    <spline-viewer url="https://prod.spline.design/sqaOBejMBdj4QNNZ/scene.splinecode"></spline-viewer>
+</div>
+
+<div class="home-container main-content">
+    <div class="row">
+        <div class="col-md-12 text-center mb-4">
+            <h1 class="display-4">Image Forgery Detection <i class="fas fa-shield-alt text-primary"></i></h1>
+            <p class="lead">Upload an image to detect if it has been tampered with or manipulated</p>
+            <p class="text-muted">Our AI-powered tool analyzes images for signs of digital manipulation and shows you exactly which areas have been modified</p>
+        </div>
+    </div>
+
+<div class="row">
+    <div class="col-lg-10 offset-lg-1">
+        <div class="card shadow-lg border-0">
+            <div class="card-body p-md-5">
+                <!-- Error message box -->
+                <div id="error-message" class="error-message alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="error-text">Error analyzing image.</span>
+                    <button type="button" class="btn-close float-end" onclick="document.getElementById('error-message').style.display='none'"></button>
+                </div>
+                
+                <!-- Upload section -->
+                <div class="upload-section">
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <div class="upload-area" id="upload-area">
+                            <i class="fas fa-cloud-upload-alt fa-4x mb-3 upload-icon"></i>
+                            <h3>Drag & Drop or Click to Upload</h3>
+                            <p class="text-muted mb-4">Supported formats: JPG, JPEG, PNG</p>
+                            <div class="d-flex justify-content-center">
+                                <span class="badge bg-info py-2 px-3 mb-3">
+                                    <i class="fas fa-info-circle me-1"></i> For best results, use high-resolution images
+                                </span>
+                            </div>
+                            <input type="file" id="image-input" name="image" accept=".jpg,.jpeg,.png" style="display: none;">
+                        </div>
+                    
+                        <div id="preview-container" class="preview-container" style="display: none;">
+                            <img id="preview-image" class="preview-image mb-4" src="" alt="Preview">
+                            <div class="row justify-content-center">
+                                <div class="col-md-6 d-grid gap-2 d-md-block text-center">
+                                    <button type="button" id="change-image" class="btn btn-outline-secondary me-md-2">
+                                        <i class="fas fa-undo me-2"></i> Change Image
+                                    </button>
+                                    <button type="submit" id="analyze-btn" class="btn btn-primary btn-analyze">
+                                        <i class="fas fa-search me-2"></i> Analyze Image
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Loading indicator -->
+                <div id="loader" class="loader"></div>
+                
+                <!-- Results section -->
+                <div id="result-container" class="results-section">
+                    <!-- Result header -->
+                    <div id="result-header" class="result-header p-4 text-center mb-4">
+                        <h3 id="result-text" class="mb-2"><i class="fas fa-spinner fa-spin me-2"></i> Analyzing image...</h3>
+                        <p id="confidence-text" class="lead mb-0">Please wait while we process your image</p>
+                    </div>
+                    
+                    <!-- Confidence bar -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0">Confidence Score</h5>
+                            <span id="confidence-percentage" class="badge bg-primary">0%</span>
+                        </div>
+                        <div class="progress" style="height: 25px; border-radius: 12px;">
+                            <div id="confidence-progress" class="progress-bar result-confidence" role="progressbar" style="width: 0%" 
+                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Analysis details -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-light py-3">
+                            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i> Analysis Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul id="analysis-details" class="list-group list-group-flush">
+                                <li class="list-group-item d-flex align-items-center">
+                                    <div class="spinner-border spinner-border-sm me-3" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span>Analyzing image characteristics...</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Result images -->
+                    <h4 class="mb-3"><i class="fas fa-images me-2"></i> Analysis Results</h4>
+                    <div class="result-images">
+                        <!-- Original image -->
+                        <div class="image-card">
+                            <div class="image-card-header bg-light">
+                                <i class="fas fa-image me-2"></i> Original Image
+                            </div>
+                            <div class="p-2">
+                                <img id="original-image" class="img-fluid" src="" alt="Original Image">
+                            </div>
+                        </div>
+                        
+                        <!-- Overlay image -->
+                        <div class="image-card">
+                            <div class="image-card-header bg-light">
+                                <i class="fas fa-layer-group me-2"></i> Manipulation Overlay
+                                <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" 
+                                   title="Highlights areas of the image that appear to have been manipulated"></i>
+                            </div>
+                            <div class="p-2">
+                                <img id="overlay-image" class="img-fluid" src="" alt="Analysis Overlay">
+                            </div>
+                        </div>
+                        
+                        <!-- Mask image -->
+                        <div class="image-card">
+                            <div class="image-card-header bg-light">
+                                <i class="fas fa-mask me-2"></i> Segmentation Mask
+                                <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" 
+                                   title="Shows the precise regions detected as tampered"></i>
+                            </div>
+                            <div class="p-2">
+                                <img id="mask-image" class="img-fluid" src="" alt="Segmentation Mask">
+                            </div>
+                        </div>
+                        
+                        <!-- ELA image (conditionally displayed) -->
+                        <div class="image-card" id="ela-card" style="display: none;">
+                            <div class="image-card-header bg-light">
+                                <i class="fas fa-microscope me-2"></i> Error Level Analysis (ELA)
+                                <i class="fas fa-question-circle tooltip-icon" data-bs-toggle="tooltip" 
+                                   title="ELA highlights differences in compression levels which may indicate manipulation"></i>
+                            </div>
+                            <div class="p-2">
+                                <img id="ela-image" class="img-fluid" src="" alt="ELA Visualization">
+                            </div>
+                        
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Cache DOM elements - only those that won't be redeclared in functions
+        const uploadArea = document.getElementById('upload-area');
+        const imageInput = document.getElementById('image-input');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const changeImageBtn = document.getElementById('change-image');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const loader = document.getElementById('loader');
+        // Don't cache elements that might be accessed in different scopes
+        // These will be retrieved when needed using getElementById
+        // const resultContainer = document.getElementById('result-container');
+        // const resultAlert = document.getElementById('result-alert');
+        // const resultText = document.getElementById('result-text');
+        // const confidenceText = document.getElementById('confidence-text');
+        const resultImage = document.getElementById('result-image');
+        const overlayContainer = document.getElementById('overlay-container');
+        const overlayImage = document.getElementById('overlay-image');
+        const maskContainer = document.getElementById('mask-container');
+        const maskImage = document.getElementById('mask-image');
+        
+        // Handle click on upload area - using vanilla JS to avoid jQuery recursion issues
+        uploadArea.addEventListener('click', function() {
+            imageInput.click();
+        });
+        
+        // Handle drag and drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#007bff';
+            uploadArea.style.backgroundColor = '#f8f9fa';
+        });
+        
+        uploadArea.addEventListener('dragleave', function() {
+            uploadArea.style.borderColor = '#ccc';
+            uploadArea.style.backgroundColor = '';
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            uploadArea.style.backgroundColor = '';
+            
+            const file = e.dataTransfer.files[0];
+            if (file && isValidImageFile(file)) {
+                imageInput.files = e.dataTransfer.files;
+                handleFileSelect(file);
+            } else {
+                alert('Please upload a valid image file (JPG, JPEG, PNG)');
+            }
+        });
+        
+        // Handle file selection
+        imageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file && isValidImageFile(file)) {
+                handleFileSelect(file);
+            } else {
+                alert('Please upload a valid image file (JPG, JPEG, PNG)');
+            }
+        });
+        
+        // Handle change image button
+        changeImageBtn.addEventListener('click', function() {
+            previewContainer.style.display = 'none';
+            uploadArea.style.display = 'block';
+            imageInput.value = '';
+        });
+        
+        // Handle form submission
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('image', imageInput.files[0]);
+            
+            // Show loader and disable buttons
+            if (analyzeBtn) analyzeBtn.disabled = true;
+            if (changeImageBtn) changeImageBtn.disabled = true;
+            if (loader) loader.style.display = 'block';
+            
+            // Hide result container if it exists
+            const resultContainer = document.getElementById('result-container');
+            if (resultContainer) resultContainer.style.display = 'none';
+            
+            // Send request to analyze image using fetch instead of $.ajax
+            fetch('/api/analyze', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    const errorMsg = data.error || 'Error analyzing image';
+                    throw new Error(errorMsg);
+                }
+                return data;
+            })
+            .then(response => {
+                // Hide loader
+                if (loader) loader.style.display = 'none';
+                if (analyzeBtn) analyzeBtn.disabled = false;
+                if (changeImageBtn) changeImageBtn.disabled = false;
+                
+                // Get all result elements by ID to avoid scope issues
+                const resultContainer = document.getElementById('result-container');
+                
+                // Show result container if it exists
+                if (resultContainer) {
+                    resultContainer.style.display = 'block';
+                    console.log('Result container displayed');
+                }
+                
+                // Get all header and confidence elements
+                const resultHeader = document.getElementById('result-header');
+                const resultText = document.getElementById('result-text');
+                const confidenceText = document.getElementById('confidence-text');
+                const confidenceProgress = document.getElementById('confidence-progress');
+                const confidencePercentage = document.getElementById('confidence-percentage');
+                const analysisDetails = document.getElementById('analysis-details');
+                
+                // Format the confidence percentage
+                const confidencePercent = (response.confidence * 100).toFixed(1);
+                console.log(`Prediction: ${response.prediction}, Confidence: ${confidencePercent}%`);
+                
+                // Clear previous result classes if header exists
+                if (resultHeader) {
+                    resultHeader.classList.remove('result-authentic', 'result-tampered');
+                }
+                
+                // Check if all DOM elements exist before using them
+                if (resultHeader && resultText && confidenceText) {
+                    // Update UI based on prediction
+                    if (response.prediction === 'authentic') {
+                        // Update for authentic result
+                        resultHeader.classList.add('result-authentic');
+                        resultText.innerHTML = '<i class="fas fa-check-circle me-2"></i> Image is Authentic';
+                        confidenceText.textContent = `This image appears to be original with ${confidencePercent}% confidence`;
+                    } else {
+                        // Update for tampered result
+                        resultHeader.classList.add('result-tampered');
+                        resultText.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Image is Tampered';
+                        confidenceText.textContent = `This image appears to be manipulated with ${confidencePercent}% confidence`;
+                    }
+                    console.log('Result header updated successfully');
+                } else {
+                    console.error('One or more header UI elements not found in the DOM');
+                }
+                
+                // Update confidence indicator if the elements exist
+                if (confidenceProgress) {
+                    // Clear previous classes
+                    confidenceProgress.classList.remove('bg-success', 'bg-danger');
+                    
+                    // Add appropriate class based on prediction
+                    if (response.prediction === 'authentic') {
+                        confidenceProgress.classList.add('bg-success');
+                    } else {
+                        confidenceProgress.classList.add('bg-danger');
+                    }
+                    
+                    // Update width
+                    confidenceProgress.style.width = `${confidencePercent}%`;
+                    confidenceProgress.setAttribute('aria-valuenow', confidencePercent);
+                    console.log('Confidence progress bar updated');
+                }
+                
+                // Update confidence percentage if element exists
+                if (confidencePercentage) {
+                    confidencePercentage.textContent = `${confidencePercent}%`;
+                }
+                
+                // Clear any previous analysis details
+                if (analysisDetails) {
+                    analysisDetails.innerHTML = '';
+                }
+                
+                // Update analysis details with the results
+                if (analysisDetails) {
+                    // Create analysis details content based on prediction
+                    if (response.prediction === 'authentic') {
+                        analysisDetails.innerHTML = `
+                            <li class="list-group-item list-group-item-success">
+                                <i class="fas fa-check-circle me-2"></i> Image appears to be authentic with ${confidencePercent}% confidence
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fas fa-info-circle me-2"></i> No signs of manipulation detected
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fas fa-chart-pie me-2"></i> Authentic probability: ${confidencePercent}%
+                            </li>
+                        `;
+                    } else {
+                        analysisDetails.innerHTML = `
+                            <li class="list-group-item list-group-item-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i> Image appears to be tampered with ${confidencePercent}% confidence
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fas fa-layer-group me-2"></i> Manipulated regions highlighted in the overlay image
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fas fa-chart-pie me-2"></i> Tampered probability: ${confidencePercent}%
+                            </li>
+                        `;
+                    }
+                    console.log('Analysis details updated successfully');
+                } else {
+                    console.error('Analysis details element not found');
+                }
+                
+                // No need to configure result container display again
+                // It's already handled above
+                
+                // Set original image from file input
+                const originalImage = document.getElementById('original-image');
+                if (originalImage && imageInput && imageInput.files && imageInput.files[0]) {
+                    originalImage.src = URL.createObjectURL(imageInput.files[0]);
+                }
+                
+                // Set overlay image if available
+                const overlayImage = document.getElementById('overlay-image');
+                if (overlayImage && response.overlay_image) {
+                    overlayImage.src = 'data:image/png;base64,' + response.overlay_image;
+                }
+                
+                // Set mask image if available
+                const maskImage = document.getElementById('mask-image');
+                if (maskImage && response.result_image) {
+                    maskImage.src = 'data:image/png;base64,' + response.result_image;
+                }
+                
+                // Show ELA image if available
+                const elaImage = document.getElementById('ela-image');
+                const elaCard = document.getElementById('ela-card');
+                
+                if (response.ela_image && elaImage) {
+                    // Set the source after adding an onload handler to prevent race conditions
+                    elaImage.onload = function() {
+                        // Show the ELA card once image is loaded
+                        if (elaCard) elaCard.style.display = 'block';
+                    };
+                    
+                    elaImage.onerror = function() {
+                        console.error('Failed to load ELA image');
+                        if (elaCard) elaCard.style.display = 'none';
+                    };
+                    
+                    // Set the source after setting up handlers
+                    elaImage.src = 'data:image/png;base64,' + response.ela_image;
+                    
+                    // Add ELA explanation to analysis details if not already added
+                    if (analysisDetails) {
+                        const elaExplanation = document.createElement('li');
+                        elaExplanation.className = 'list-group-item';
+                        elaExplanation.innerHTML = '<i class="fas fa-microscope me-2"></i> Error Level Analysis (ELA) highlights differences in compression levels which may indicate manipulation';
+                        analysisDetails.appendChild(elaExplanation);
+                    }
+                } else {
+                    // Hide ELA card if no ELA image is available
+                    if (elaCard) elaCard.style.display = 'none';
+                }
+                
+                // No need to add additional mask details as it's already included in the analysis details
+                // when the image is detected as tampered
+            })
+            .catch(error => {
+                // Hide loader
+                loader.style.display = 'none';
+                analyzeBtn.disabled = false;
+                changeImageBtn.disabled = false;
+                
+                // Show error in the UI
+                const errorMessage = document.getElementById('error-message');
+                const errorText = document.getElementById('error-text');
+                
+                if (errorMessage && errorText) {
+                    // Set error message
+                    errorText.textContent = 'Error analyzing image: ' + error.message;
+                    // Display the error message box
+                    errorMessage.style.display = 'block';
+                    // Scroll to error
+                    errorMessage.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    // Fallback to alert if UI elements not found
+                    console.error('Error analyzing image:', error);
+                    alert('Error analyzing image: ' + error.message);
+                }
+            });
+        });
+        
+        // Helper functions
+        function handleFileSelect(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                uploadArea.style.display = 'none';
+                previewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function isValidImageFile(file) {
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            return validTypes.includes(file.type);
+        }
+    });
+</script>
+</div> <!-- Close home-container -->
+{% endblock %}

@@ -1,0 +1,99 @@
+/* Main Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Upload Area Styles */
+.upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 60px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 300px;
+    margin-top: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Loader */
+.loader {
+    display: none;
+    margin: 20px auto;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Result Styles */
+.result-container {
+    display: none;
+    margin-top: 30px;
+}
+
+.authentic {
+    color: green;
+    font-weight: bold;
+}
+
+.tampered {
+    color: red;
+    font-weight: bold;
+}
+
+/* Card Styles */
+.card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+/* History Page */
+.history-card {
+    margin-bottom: 20px;
+}
+
+.history-image {
+    max-height: 200px;
+    object-fit: cover;
+}
+
+/* Authentication Pages */
+.auth-container {
+    max-width: 500px;
+    margin: 50px auto;
+}
+
+/* Footer */
+.footer {
+    margin-top: 50px;
+    padding: 20px 0;
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}

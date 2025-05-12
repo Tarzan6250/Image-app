@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis History - Image Forgery Detection{% endblock %}
+
+{% block styles %}
+<style>
+.viz-thumbnail {
+    height: 100px;
+    overflow: hidden;
+    margin-bottom: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.viz-thumbnail img {
+    max-height: 80px;
+    object-fit: contain;
+    width: 100%;
+}
+
+.history-card {
+    transition: transform 0.2s;
+}
+
+.history-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold"><i class="fas fa-history me-2"></i>Analysis History</h1>
+            <p class="lead">View your past image forgery detection analyses</p>
+            <hr>
+        </div>
+    </div>
+
+    {% if history|length == 0 %}
+    <div class="row">
+        <div class="col-12 text-center py-5">
+            <div class="py-5">
+                <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+                <h3 class="text-muted">No analysis history found</h3>
+                <p class="text-muted">Upload and analyze images to see your history here.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-upload me-2"></i>Analyze an Image
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for entry in history %}
+        <div class="col">
+            <div class="card h-100 history-card" data-entry-id="{{ entry.id }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="badge {% if entry.prediction == 'tampered' %}bg-danger{% else %}bg-success{% endif %} me-2">
+                        {{ entry.prediction|capitalize }}
+                    </span>
+                    <small class="text-muted">{{ entry.timestamp }}</small>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ entry.filename }}</h5>
+                    <p class="card-text">
+                        <strong>Confidence:</strong> {{ (entry.confidence * 100)|round(2) }}%
+                    </p>
+                    <div class="row mt-3">
+                        <div class="col-4">
+                            <img src="{{ entry.original_url }}" class="img-fluid img-thumbnail" alt="Original">
+                            <div class="text-center"><small>Original</small></div>
+                        </div>
+                        <div class="col-4">
+                            <img src="{{ entry.mask_url }}" class="img-fluid img-thumbnail" alt="Mask">
+                            <div class="text-center"><small>Mask</small></div>
+                        </div>
+                        <div class="col-4">
+                            <img src="{{ entry.overlay_url }}" class="img-fluid img-thumbnail" alt="Overlay">
+                            <div class="text-center"><small>Overlay</small></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-muted small">
+                    <i class="fas fa-clock me-1"></i>{{ entry.timestamp }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Analysis Details Modal -->
+<div class="modal fade" id="analysisModal" tabindex="-1" aria-labelledby="analysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="analysisModalLabel">Analysis Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Analysis Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <tbody>
+                                        <tr>
+                                            <th>Filename:</th>
+                                            <td id="modal-filename"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Prediction:</th>
+                                            <td id="modal-prediction"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Confidence:</th>
+                                            <td id="modal-confidence"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Processing Time:</th>
+                                            <td id="modal-processing-time"></td>
+                                        </tr>
+                                        <tr>
+                                            <th>Timestamp:</th>
+                                            <td id="modal-timestamp"></td>
+                                        </tr>
+                                        <tr id="tampered-area-row">
+                                            <th>Tampered Area:</th>
+                                            <td id="modal-tampered-area"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Original Image</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="modal-original-image" class="img-fluid rounded" alt="Original Image">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Segmentation Mask</h5>
+                                <small class="text-muted">White areas indicate tampered regions</small>
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="modal-segmentation-mask" class="img-fluid rounded" alt="Segmentation Mask">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Manipulation Overlay</h5>
+                                <small class="text-muted">Red highlights show tampered regions</small>
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="modal-manipulation-overlay" class="img-fluid rounded" alt="Manipulation Overlay">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-download me-1"></i>Download
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="downloadDropdown">
+                        <li><a id="download-original" class="dropdown-item" href="#" download>Original Image</a></li>
+                        <li><a id="download-mask" class="dropdown-item" href="#" download>Segmentation Mask</a></li>
+                        <li><a id="download-overlay" class="dropdown-item" href="#" download>Manipulation Overlay</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a id="download-report" class="dropdown-item" href="#" download>Analysis Report (PDF)</a></li>
+                        <li><a id="modal-download-btn" class="dropdown-item" href="#" download>All Files (ZIP)</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Click handler for history cards
+        $('.history-card').click(function() {
+            const entryId = $(this).data('entry-id');
+            
+            // Get the entry data from the server
+            $.ajax({
+                url: '/api/history/' + entryId,
+                type: 'GET',
+                success: function(data) {
+                    // Fill modal with data
+                    $('#modal-filename').text(data.filename);
+                    $('#modal-prediction').text(data.prediction.charAt(0).toUpperCase() + data.prediction.slice(1));
+                    $('#modal-confidence').text((data.confidence * 100).toFixed(2) + '%');
+                    $('#modal-processing-time').text(data.processing_time.toFixed(2) + ' seconds');
+                    $('#modal-timestamp').text(data.timestamp);
+                    
+                    // Show tampered area percentage if available
+                    if (data.tampered_area_percentage) {
+                        $('#modal-tampered-area').text(data.tampered_area_percentage.toFixed(2) + '%');
+                        $('#tampered-area-row').show();
+                    } else {
+                        $('#tampered-area-row').hide();
+                    }
+                    
+                    // Set images with error handling
+                    $('#modal-original-image').attr('src', data.original_image_url)
+                        .on('error', function() {
+                            $(this).attr('src', '/static/img/image-placeholder.png');
+                        });
+                    
+                    $('#modal-segmentation-mask').attr('src', data.segmentation_mask_url)
+                        .on('error', function() {
+                            $(this).attr('src', '/static/img/image-placeholder.png');
+                        });
+                    
+                    $('#modal-manipulation-overlay').attr('src', data.manipulation_overlay_url)
+                        .on('error', function() {
+                            $(this).attr('src', '/static/img/image-placeholder.png');
+                        });
+                    
+                    // Set download links for individual files
+                    $('#download-original').attr('href', data.original_image_url);
+                    $('#download-mask').attr('href', data.segmentation_mask_url);
+                    $('#download-overlay').attr('href', data.manipulation_overlay_url);
+                    $('#download-report').attr('href', '/generate-report/' + data.id);
+                    $('#modal-download-btn').attr('href', data.download_url);
+                    
+                    // Force image reload by adding timestamp to prevent caching
+                    const timestamp = new Date().getTime();
+                    $('#modal-original-image').attr('src', data.original_image_url + '?t=' + timestamp);
+                    $('#modal-segmentation-mask').attr('src', data.segmentation_mask_url + '?t=' + timestamp);
+                    $('#modal-manipulation-overlay').attr('src', data.manipulation_overlay_url + '?t=' + timestamp);
+                    
+                    // Show modal
+                    $('#analysisModal').modal('show');
+                },
+                error: function(xhr, status, error) {
+                    alert('Error loading analysis details: ' + error);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
