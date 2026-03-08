@@ -1,4 +1,4 @@
-﻿# Image Forgery Detection Web Application
+# Image Forgery Detection Web Application
 
 A web-based application for detecting whether images have been tampered with, using a deep learning model.
 
@@ -17,7 +17,7 @@ A web-based application for detecting whether images have been tampered with, us
 ![Analysis Result](Images/Analysis%20result.png)
 *Forgery Detection Analysis Result*
 
-![Login Page](login_page.png)
+![Login Page](Images/login_page.png)
 *User Authentication*
 
 ![History Panel](Images/history.png.png)
@@ -42,34 +42,34 @@ A web-based application for detecting whether images have been tampered with, us
 ### Installation
 
 1. Clone the repository or download the source code
-   `
+   ```bash
    git clone https://github.com/Tarzan6250/Image-app.git
    cd Image-app
-   `
+   ```
 
 2. Install the required dependencies:
-   `
+   ```bash
    pip install -r requirements.txt
-   `
+   ```
 
 3. Make sure MongoDB is running on your system:
-   `
+   ```bash
    # On Windows
    # Start MongoDB service if not already running
    net start MongoDB
-   `
+   ```
 
-4. You will also need the pre-trained forgery detection models (.pth or .onnx) to run this app. Ensure orgery_detection_model_120.pth and/or orgery_detection_model.onnx are placed in the root directory.
+4. You will also need the pre-trained forgery detection models (`.pth` or `.onnx`) to run this app. Ensure `forgery_detection_model_120.pth` and/or `forgery_detection_model.onnx` are placed in the root directory.
 
 5. Run the application:
-   `
+   ```bash
    python app.py
-   `
+   ```
 
 6. Open your web browser and navigate to:
-   `
+   ```
    http://localhost:5000
-   `
+   ```
 
 ## Usage
 
@@ -81,7 +81,7 @@ A web-based application for detecting whether images have been tampered with, us
 
 ## Model Information
 
-The application uses a deep learning model (orgery_detection_model_120.pth) that combines classification and segmentation to:
+The application uses a deep learning model (`forgery_detection_model_120.pth`) that combines classification and segmentation to:
 
 1. Determine if an image has been tampered with
 2. Identify and highlight the specific regions that have been modified
@@ -92,7 +92,7 @@ The model architecture is a dual-task network with:
 
 ## File Structure
 
-`
+```text
 image-app/
 ├── app.py                  # Main Flask application
 ├── model_architecture.py   # Neural network architecture
@@ -103,7 +103,7 @@ image-app/
 ├── results/                # Analysis results
 ├── Images/                 # Screenshots of the Application
 └── forgery_detection_model_120.pth  # Pre-trained model
-`
+```
 
 ## License
 
