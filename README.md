@@ -12,7 +12,7 @@ A web-based application for detecting whether images have been tampered with, us
 ### Application Screenshots
 
 ![Dashboard](Images/dashboard.png)
-*Home Dashboard for Image Upload*
+*Login Page*
 
 ![Analysis Result](Images/analysis_result.png)
 *Forgery Detection Analysis Result*
