@@ -11,16 +11,16 @@ A web-based application for detecting whether images have been tampered with, us
 
 ### Application Screenshots
 
-![Dashboard](Images/dashboard.png)
+![Dashboard](Images/Dashboard.png)
 *Home Dashboard for Image Upload*
 
-![Analysis Result](Images/analysis_result.png)
+![Analysis Result](Images/Analysis%20result.png)
 *Forgery Detection Analysis Result*
 
-![Tampered Region](Images/tampered_region.png)
-*Identification of Modified Parts in the Image*
+![Login Page](login_page.png)
+*User Authentication*
 
-![History Panel](Images/history.png)
+![History Panel](Images/history.png.png)
 *User Analysis History*
 
 ## Technologies Used
