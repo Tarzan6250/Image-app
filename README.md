@@ -15,7 +15,7 @@ A web-based application for detecting whether images have been tampered with, us
 *Login Page*
 
 ![Analysis Result](Images/analysis_result.png)
-*Forgery Detection Analysis Result*
+*Home Page*
 
 ![Tampered Region](Images/tampered_region.png)
 *Identification of Modified Parts in the Image*
