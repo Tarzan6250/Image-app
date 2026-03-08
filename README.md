@@ -11,7 +11,7 @@ A web-based application for detecting whether images have been tampered with, us
 
 ### Application Screenshots
 
-![Dashboard](Images/Dashboard.png)
+![Dashboard](Images/dashboard.png)
 *Home Dashboard for Image Upload*
 
 ![Analysis Result](Images/Analysis%20result.png)
