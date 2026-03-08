@@ -11,11 +11,11 @@ A web-based application for detecting whether images have been tampered with, us
 
 ### Application Screenshots
 
-![Dashboard](Images/Dashboard.png)
-*Home Dashboard for Image Upload*
+![Dashboard](Images/dashboard.png)
+*Login Page*
 
-![Analysis Result](Images/Analysis%20result.png)
-*Forgery Detection Analysis Result*
+![Analysis Result](Images/analysis_result.png)
+*Home Page*
 
 ![Login Page](Images/login_page.png)
 *User Authentication*
